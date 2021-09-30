@@ -34,3 +34,4 @@ import json
 with open("imagenet_class_index.json") as f:
     imagenet_classes = {int(i):x[1] for i,x in json.load(f).items()}
 print(imagenet_classes[pred.max(dim=1)[1].item()])
+print(nn.CrossEntropyLoss()(model(norm(pig_tensor)),torch.LongTensor([341])).item())
