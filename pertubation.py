@@ -1,3 +1,7 @@
+import torch
+import torch.optim as optim
+
+epsilon = 2./255
 from PIL import Image
 from torchvision import transforms
 import matplotlib.pyplot as plt
@@ -28,15 +32,17 @@ model = resnet50(pretrained=True)
 model.eval()
 
 
-pred = model(norm(pig_tensor))
+delta = torch.zeros_like(pig_tensor, requires_grad=True)
+opt = optim.SGD([delta], lr=1e-1)
 
-import json
-with open("imagenet_class_index.json") as f:
-    imagenet_classes = {int(i):x[1] for i,x in json.load(f).items()}
-print(imagenet_classes[pred.max(dim=1)[1].item()])
-print(nn.CrossEntropyLoss()(model(norm(pig_tensor)), torch.LongTensor([341])).item())
+for t in range(30):
+    pred = model(norm(pig_tensor+delta))
+    loss = -nn.CrossEntropyLoss()(pred, torch.LongTensor([341]))
+    if t % 5 == 0:
+        print(t, loss.item())
+    opt.zero_grad()
+    loss.backward()
+    opt.step()
+    delta.data.clamp_(-epsilon, epsilon)
 
-import math
-exp_val = nn.CrossEntropyLoss()(model(norm(pig_tensor)), torch.LongTensor([341])).item()
-softmax_val = math.exp(-exp_val)
-print(softmax_val)
+print("True class probability is ", nn.Softmax(dim=1)(pred)[0, 341].item())
